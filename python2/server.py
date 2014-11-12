@@ -1,7 +1,6 @@
 import socket
 import thread
 import json
-import marshal
 import socketserver
 
 class UDPDetectionHandler(SocketServer.BaseRequestHandler):
@@ -12,9 +11,12 @@ class UDPDetectionHandler(SocketServer.BaseRequestHandler):
     def handle(self):
         data = self.request[0].strip()
         socket = self.request[1]
-        print "{} wrote:".format(self.client_address[0])
-        print data
-        socket.sendto(data.upper(), self.client_address)
+        
+
+        socket.sendto(
+            json.dumps(
+                {"name":"test","ip":socket.gethostbyname(socket.gethostname())}),
+                self.client_address)
 
 class Server(object):
     """Server(name, port[, ip=])
@@ -46,7 +48,6 @@ set, it will default to the same port that the app will be running on.
         """open_loby(max_players, max_wait_time) -> waits until either
         max_players have joined or it times out
         """
-        
         this.s.listen(max_players*2) 
         # ^ this limits how many conection it will keep queued up and might
         # need to be changed later
@@ -67,29 +68,50 @@ set, it will default to the same port that the app will be running on.
                 player_count += 1
         return player_count
 
+    def receive_from_all(self):
+        """Receives data from all of the connected clients"""
+        results = {}
+        threads = []
+        for name in self.players.keys():
+            th = Thread(
+                target=self._recieve_from_player, args=(name, results)
+                )
+            th.start()
+            threads.append(th)
+        for t in threads:
+            t.join()
+        return results
 
+    def _receive_from_player(self, name, results):
+        """
+        Receives data from an individual player. Intended for internal use only
+        """
+        conn = self.players[name]
+        data = json.loads(conn.recv(2048))
+        results[name] = data
+        return data
 
+    def send_to_all(self, data):
+        """sends an array or dictionary to all of the connected clients"""
+        msg = json.dumps(data)
 
-    # def recieve_from_all(self):
-    #     results = {}
-    #     threads = []
-    #     for name in self.players.keys():
-    #         th = Thread(
-    #             target=self._recieve_from_player, args=(name, results)
-    #             )
-    #         th.start()
-    #         threads.append(th)
+        for conn in self.players.values():
+            conn.send(msg)
 
-    #     map(lambda thread: thread.join(), threads)
+    def send_to(self, data, name):
+        """
+        Like send_to_all, but only sends to a single player
+        """
+        msg = json.dumps(data)
+        self.players[name].send(msg)
 
-    #     for name in results.keys():
+    def close_server(self):
+        """
+        Closes the server object.  It will stop working after this is called
+        """
+        for conn in self.players.values():
+            conn.close()
 
-
-
-    # def _recieve_from_player(self, name, results):
-    #     conn = self.players[name]
-    #     data = conn.recv(1024)
-    #     results[name] = json.loads(data)
         
 
 
