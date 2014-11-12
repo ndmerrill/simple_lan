@@ -1,17 +1,39 @@
 import socket
 import thread
 import json
+<<<<<<< HEAD
 
 
 class Server():
     """Server(name, port[, ip=None])
+=======
+import socketserver
+
+class UDPDetectionHandler(SocketServer.BaseRequestHandler):
+    """
+    This class handles server detection pings over the broadcast thingy.
+    """
+
+    def handle(self):
+        data = self.request[0].strip()
+        socket = self.request[1]
+        print "{} wrote:".format(self.client_address[0])
+        print data
+        socket.sendto(data.upper(), self.client_address)
+
+
+
+
+class Server(object):
+    """Server(name, port[, ip=])
+>>>>>>> Fixed formatting
 name it sent to all clients requesting a server list. The detection port is
 the port that clients will ping while looking for the server.  If it is not
 set, it will default to the same port that the app will be running on.
 """
     def __init__(self, name, port, timeout, detection_port=None, ip=None):
         self.running_port = port
-        
+
         self.detection_port = detection_port
         if detection_port is None:
             self.detection_port = port
@@ -32,7 +54,12 @@ set, it will default to the same port that the app will be running on.
         """open_loby(max_players, max_wait_time) -> waits until either
         max_players have joined or it times out
         """
+<<<<<<< HEAD
         this.s.listen(max_players*2) 
+=======
+
+        this.s.listen(max_players*2)
+>>>>>>> Fixed formatting
         # ^ this limits how many conection it will keep queued up and might
         # need to be changed later
         player_count = 0
@@ -96,12 +123,17 @@ set, it will default to the same port that the app will be running on.
         for conn in self.players.values():
             conn.close()
 
+<<<<<<< HEAD
         
+=======
+    # def _recieve_from_player(self, name, results):
+    #     conn = self.players[name]
+    #     data = conn.recv(1024)
+    #     results[name] = json.loads(data)
+>>>>>>> Fixed formatting
 
 
 
 
 
 
-            
-        
