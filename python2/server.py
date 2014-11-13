@@ -114,6 +114,10 @@ set, it will default to the same port that the app will be running on.
         for conn in self.players.values():
             conn.close()
 
+    def _get_computer_ip(self):
+        gws = netifaces.gateways()
+        return gws['default'][netifaces.AF_INET][0]
+
     # def _recieve_from_player(self, name, results):
     #     conn = self.players[name]
     #     data = conn.recv(1024)

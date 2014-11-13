@@ -21,7 +21,7 @@ class Client(object):
         for i in xrange(2):
             broadcast_sock.sendto("to", ('<broadcast>', self.port))
             start_time = time.time()
-            while (start_time - time.time() < timeout):
+            while (time.time() - start_time < timeout):
                 data, address = broadcast_sock.recvfrom(2)
                 if data == "fr":
                     servers.append(address)
