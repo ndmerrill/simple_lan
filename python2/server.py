@@ -1,31 +1,15 @@
 import socket
 import thread
 import json
-import socketserver
 
-class UDPDetectionHandler(SocketServer.BaseRequestHandler):
-    """
-    This class handles server detection pings over the broadcast thingy.
-    """
 
-    def handle(self):
-        data = self.request[0].strip()
-        socket = self.request[1]
-        
-
-        socket.sendto(
-            json.dumps(
-                {"name":"test","ip":socket.gethostbyname(socket.gethostname())}),
-                self.client_address)
-
-class Server(object):
-    """Server(name, port[, ip=])
+class Server():
+    """Server(name, port[, ip=None])
 name it sent to all clients requesting a server list. The detection port is
 the port that clients will ping while looking for the server.  If it is not
 set, it will default to the same port that the app will be running on.
 """
     def __init__(self, name, port, timeout, detection_port=None, ip=None):
-        super(Server, self).__init__()
         self.running_port = port
         
         self.detection_port = detection_port
@@ -59,11 +43,11 @@ set, it will default to the same port that the app will be running on.
         while player_count < max_players and time.clock()-t_initial < timeout:
             conn, addr = s.accept()
             rec = json.loads(conn.recv(512))
-            if rec['type'] = "ping":
+            if rec['type'] == "ping":
                 conn.send(msg)
                 conn.close()
 
-            elif rec["type"] = "join":
+            elif rec["type"] == "join":
                 self.players[rec['name']] = conn
                 player_count += 1
         return player_count
