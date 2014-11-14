@@ -1,8 +1,9 @@
 import socket
 import thread
 import json
-import socketserver
-
+import Queue
+import SocketServer
+import struct
 
 
 class UDPDetectionHandler(SocketServer.BaseRequestHandler):
@@ -18,12 +19,10 @@ class UDPDetectionHandler(SocketServer.BaseRequestHandler):
         socket.sendto(data.upper(), self.client_address)
 
 
-
-
 class Server(object):
     """Server(name, port[, ip=])
-the name is sent to all clients requesting a server list. The detection port is
-the port that clients will ping while looking for the server.  If it is not
+the name is sent to all clients requesting a server list. The detection port
+is the port that clients will ping while looking for the server.  If it is not
 set, it will default to the same port that the app will be running on.
 """
     def __init__(self, name, port, timeout, detection_port=None, ip=None):
@@ -52,7 +51,7 @@ set, it will default to the same port that the app will be running on.
 
         this.s.listen(max_players*2) 
         # ^ this limits how many conection it will keep queued up and might
-        # need to be changed later
+        #       need to be changed later
         player_count = 0
         t_initial = time.clock()
 
@@ -73,31 +72,21 @@ set, it will default to the same port that the app will be running on.
     def receive_from_all(self):
         """Receives data from all of the connected clients"""
         results = {}
-        threads = []
         for name in self.players.keys():
-            th = Thread(
-                target=self._recieve_from_player, args=(name, results)
-                )
-            th.start()
-            threads.append(th)
-        for t in threads:
-            t.join()
+            conn = self.players[name]
+            data = conn.recv(2)
+            p_size = struct.unpack("!H", data)
+            data = json.loads(conn.recv(p_size))
+            results[name] = data
         return results
-
-    def _receive_from_player(self, name, results):
-        """
-        Receives data from an individual player. Intended for internal use only
-        """
-        conn = self.players[name]
-        data = json.loads(conn.recv(2048))
-        results[name] = data
-        return data
 
     def send_to_all(self, data):
         """sends an array or dictionary to all of the connected clients"""
         msg = json.dumps(data)
-
+        p_size = len(msg)
+        p_size = struct.pack("!H", p_size)
         for conn in self.players.values():
+            conn.send(psize)
             conn.send(msg)
 
     def send_to(self, data, name):
@@ -105,6 +94,9 @@ set, it will default to the same port that the app will be running on.
         Like send_to_all, but only sends to a single player
         """
         msg = json.dumps(data)
+        p_size = len(msg)
+        p_size = struct.pack("!H", p_size)
+        self.sock.send(p_size)
         self.players[name].send(msg)
 
     def close_server(self):
@@ -117,12 +109,6 @@ set, it will default to the same port that the app will be running on.
     def _get_computer_ip(self):
         gws = netifaces.gateways()
         return gws['default'][netifaces.AF_INET][0]
-
-    # def _recieve_from_player(self, name, results):
-    #     conn = self.players[name]
-    #     data = conn.recv(1024)
-    #     results[name] = json.loads(data)
-
 
 
 
