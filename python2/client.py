@@ -6,7 +6,7 @@ import struct
 
 
 class Client(object):
-    """docstring for Client"""
+    """A client networking object"""
     def __init__(self, name, port):
         self.name = name
         self.port = port
@@ -32,13 +32,22 @@ class Client(object):
 
     def get_data(self):
         """returns any new data sent from the server"""
+        return json.loads(self.get_raw())
+
+    def get_data_raw(self):
+        """returns any new data sent from the server"""
         p_size = self.sock.recv(2)
         p_size = struct.unpack("!H", p_size)
         data = self.sock.recv(p_size)
-        return json.loads(data)
+        return data
 
     def send(self, data):
+        """Sends a list or dictionary back to the server"""
         msg = json.dumps(data)
+        self.send_raw(msg)
+
+    def send_raw(self, msg):
+        """Sends a string of bytes back to the server"""
         p_size = len(msg)
         p_size = struct.pack("!H", p_size)
         self.sock.send(p_size)

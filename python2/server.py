@@ -45,7 +45,8 @@ set, it will default to the same port that the app will be running on.
         self.players = {}
 
     def open_loby(max_players, timeout):
-        """open_loby(max_players, max_wait_time) -> waits until either
+        """
+        open_loby(max_players, max_wait_time) -> waits until either
         max_players have joined or it times out
         """
 
@@ -70,30 +71,54 @@ set, it will default to the same port that the app will be running on.
         return player_count
 
     def receive_from_all(self):
-        """Receives data from all of the connected clients"""
+        """Receives json data from all of the connected clients"""
         results = {}
         for name in self.players.keys():
-            conn = self.players[name]
-            data = conn.recv(2)
-            p_size = struct.unpack("!H", data)
-            data = json.loads(conn.recv(p_size))
+            data = self.receive_from(name)
             results[name] = data
         return results
 
-    def send_to_all(self, data):
-        """sends an array or dictionary to all of the connected clients"""
-        msg = json.dumps(data)
-        p_size = len(msg)
-        p_size = struct.pack("!H", p_size)
-        for conn in self.players.values():
-            conn.send(psize)
-            conn.send(msg)
+    def receive_from_all_raw(self):
+        """Receives raw data from all of the connected clients"""
+        results = {}
+        for name in self.players.keys():
+            data = self.receive_from_raw(name)
+            results[name] = data
+        return results
 
-    def send_to(self, data, name):
+    def receive_from_raw(self, name):
+        """Receives a string of bytes from a given client"""
+        conn = self.players[name]
+        data = conn.recv(2)
+        p_size = struct.unpack("!H", data)
+        data = conn.recv(p_size)
+        return data
+
+    def receive_from(self, name):
+        """Receives a list or dictionary from a player"""
+        return json.loads(self.receive_from_raw(name))
+
+    def send_to_all(self, data):
+        """Sends an array or dictionary to all of the connected clients"""
+        msg = json.dumps(data)
+        self.send_to_all_raw(msg)
+
+    def send_to_all_raw(self, msg):
+        """Sends a string of bytes to all of the connected clients"""
+        for name in self.players.keys():
+            self.send_to_raw(name, msg)
+
+    def send_to(self, name, data):
         """
         Like send_to_all, but only sends to a single player
         """
         msg = json.dumps(data)
+        self.send_to_raw(msg, name)
+
+    def send_to_raw(self, name, msg):
+        """
+        Like send_to_all_raw, but only sends to a single player
+        """
         p_size = len(msg)
         p_size = struct.pack("!H", p_size)
         self.sock.send(p_size)
@@ -107,6 +132,9 @@ set, it will default to the same port that the app will be running on.
             conn.close()
 
     def _get_computer_ip(self):
+        """
+        Returns the ip address of this computer, should be platfrom agnostic
+        """
         gws = netifaces.gateways()
         return gws['default'][netifaces.AF_INET][0]
 
