@@ -16,7 +16,8 @@ class UDPDetectionHandler(SocketServer.BaseRequestHandler):
         socket = self.request[1]
         print "{} wrote:".format(self.client_address[0])
         print data
-        socket.sendto(data.upper(), self.client_address)
+        if data = "to":
+            socket.sendto(self.server.server_name, self.client_address)
 
 
 class Server(object):
@@ -28,21 +29,28 @@ set, it will default to the same port that the app will be running on.
     def __init__(self, name, port, timeout, detection_port=None, ip=None):
         self.running_port = port
 
-        self.detection_port = detection_port
         if detection_port is None:
-            self.detection_port = port
+            detection_port = port
+        self.detection_port = detection_port
+
+        assert(len(name)<=16)
         self.name = name
         self.timeout = timeout
-        if ip == None:
-            ip = socket.gethostbyname(socket.gethostname())
 
+        if ip == None:
+            ip = _get_computer_ip()
         self.ip = ip
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.bind((HOST, PORT))
+
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.bind((ip, port))
         # except socket.error , msg:
     # print('Bind failed. Error Code : ' + str(msg[0]) + ' Message ' + msg[1])
-        self.socket = s
         self.players = {}
+
+        self.udp_server = Socket.UDPServer(
+                (self.ip, self.detection_port),
+                UDPDetectionHandler);
+        self.udp_server.server_name = self.name # allow broadcast of name
 
     def open_loby(max_players, timeout):
         """

@@ -24,9 +24,9 @@ class Client(object):
             broadcast_sock.sendto("to", ('<broadcast>', self.port))
             start_time = time.time()
             while (time.time() - start_time < timeout):
-                data, address = broadcast_sock.recvfrom(2)
-                
-                servers[name] = address
+                data, address = broadcast_sock.recvfrom(16)
+
+                servers[data.strip()] = address
 
         return servers
 
