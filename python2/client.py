@@ -18,17 +18,21 @@ class Client(object):
         """
         broadcast_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         broadcast_sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        broadcast_sock.setblocking(False)
 
         servers = {}
         for i in xrange(2):
             broadcast_sock.sendto("to", ('<broadcast>', self.port))
-            start_time = time.clock()
-            while (time.clock() - start_time < timeout):
-                data, address = broadcast_sock.recvfrom(16)
+            start_time = time.time()
+            while (time.time() - start_time < timeout):
+                try:
+                    data, address = broadcast_sock.recvfrom(16)
+                except socket.error:
+                    continue
                 servers[data.strip()] = address
         return servers
 
-    def join_server(address):
+    def join_server(self, address):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((address, self.port))
         self.sock.sendall(self.name.ljust(16))

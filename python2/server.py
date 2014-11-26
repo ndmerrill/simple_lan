@@ -2,7 +2,10 @@ import socket
 import json
 import SocketServer
 import struct
-from multiprocessing import Process, Queue, Pipe
+import multiprocessing
+import netifaces
+import Queue
+import time
 
 
 class UDPDetectionHandler(SocketServer.BaseRequestHandler):
@@ -15,7 +18,7 @@ class UDPDetectionHandler(SocketServer.BaseRequestHandler):
         socket = self.request[1]
         print "{} wrote:".format(self.client_address[0])
         print data
-        if data = "to":
+        if data == "to":
             socket.sendto(self.server.server_name.ljust(16), self.client_address)
 
 
@@ -28,29 +31,37 @@ def UDP_Runner(q,udp_server):
         except Queue.Empty:
             continue
 
-def lobby_receiver(pipe, max_players, timeout):
+def lobby_receiver(recv_queue, send_queue, ip, port, max_players, timeout):
     # make a socket for the lobby
-    try:
-        socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        socket.bind((self.ip, self.port))
-        socket.listen(5)
-        socket.setblocking(False)
-        player_count = 0
-        t_initial = time.clock()
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind((ip, port))
+    sock.listen(5)
+    sock.setblocking(False)
 
-        while player_count < max_players and time.clock()-t_initial < timeout:
+    try:
+        player_count = 0
+        t_initial = time.time()
+
+        while player_count < max_players and time.time()-t_initial < timeout:
             try:
-                conn, addr = socket.accept()
+                recv_queue.get_nowait()
+                break
+            except Queue.Empty:
+                pass
+            try:
+                conn, addr = sock.accept()
                 rec = conn.recv(16)
                 conn.setblocking(False)
-                pipe.send((rec.strip(), conn))
+                send_queue.put((rec.strip(), conn))
                 player_count += 1
 
             except socket.error:
                 continue
     finally:
-        socket.close()
-        pipe.close()
+        print "closing"
+        sock.shutdown(socket.SHUT_RDWR)
+        sock.close()
+        print "closed"
 
 
 class Server(object):
@@ -64,40 +75,42 @@ set, it will default to the same port that the app will be running on.
         assert(len(name)<=16)
         self.name = name
         if ip == None:
-            ip = _get_computer_ip()
+            ip = self._get_computer_ip()
         self.ip = ip
         self.players = {}
 
 
-    def open_lobby(max_players, timeout=604800):
+    def open_lobby(self, max_players, timeout=604800):
         """
         open_lobby(max_players, max_wait_time) -> waits until either
         max_players have joined or it times out
         """
         # make UDP server
-        udp_server = Socket.UDPServer(
-                (self.ip, self.port),
+        print self.ip
+        udp_server = SocketServer.UDPServer(
+                ('<broadcast>', self.port),
                 UDPDetectionHandler)
         udp_server.server_name = self.name # allow broadcast of name
         udp_server.timeout = .05
 
         # start UDP server in another process
 
-        self.udp_q = Queue()
-        self.udp_p = Process(target=UDP_Runner, args=(self.udp_q,udp_server))
+        self.udp_q = multiprocessing.Queue()
+        self.udp_p = multiprocessing.Process(target=UDP_Runner, args=(self.udp_q,udp_server))
         self.udp_p.start()
 
 
         # make a socket for the loby
         # can we delete this now?
+        """
         socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         socket.bind((self.ip, self.port))
         socket.listen(3)
         socket.setblocking(False)
         player_count = 0
-        t_initial = time.clock()
+        t_initial = time.time()
 
-        while player_count < max_players and time.clock()-t_initial < timeout:
+        while player_count < max_players and time.time()-t_initial < timeout:
             try:
                 conn, addr = socket.accept()
                 rec = json.loads(conn.recv(16))
@@ -106,24 +119,25 @@ set, it will default to the same port that the app will be running on.
 
             except socket.error:
                 continue
-        #until here?
+        #until here?"""
 
-        self.lobby_pipe, child_pipe = Pipe(False)
-        self.lobby_process = Process(
-            target=lobby_receiver, args=(child_pipe, max_players, timeout))
+        self.send_queue = multiprocessing.Queue()
+        self.recv_queue = multiprocessing.Queue()
+        self.lobby_process = multiprocessing.Process(
+            target=lobby_receiver, args=(self.send_queue, self.recv_queue, self.ip, self.port, max_players, timeout))
         self.lobby_process.start()
 
-    def count_lobby():
+    def count_lobby(self):
         """
         Only use while the lobby is open retrieves any new players and returns
         the number of connected players
         """
-        while self.lobby_pipe.poll():
-            name, conn = self.lobby_pipe.recv()
+        while not self.recv_queue.empty():
+            name, conn = self.recv_queue.get()
             self.players[name] = conn
         return len(self.players.keys())
 
-    def close_lobby():
+    def close_lobby(self):
         """
         Closes the lobby and retrieves the player connections
         Returns the number of connected players
@@ -131,12 +145,12 @@ set, it will default to the same port that the app will be running on.
         # close UDP server
         self.udp_q.put(1);
         self.udp_p.join()
-        self.lobby_process.join()
-        # closes the other end of the pipe to prevent more data from being
-        # added on to the end
-        while self.lobby_pipe.poll():
-            name, conn = self.lobby_pipe.recv()
+        self.send_queue.put(1);
+
+        while not self.recv_queue.empty():
+            name, conn = self.lobby_pipe.get()
             self.players[name] = conn
+        self.lobby_process.join()
         return len(self.players.keys())
 
     def receive_from_all(self):
@@ -169,7 +183,7 @@ set, it will default to the same port that the app will be running on.
     def receive_from(self, name):
         """Receives a list or dictionary from a player"""
         data = self.receive_from_raw(name)
-        if data = None:
+        if data == None:
             return None
         return json.loads(data)
 
@@ -182,7 +196,7 @@ set, it will default to the same port that the app will be running on.
         """Sends a string of bytes to all of the connected clients"""
         work = True
         for name in self.players.keys():
-            work = work && self.send_to_raw(name, msg)
+            work = work and self.send_to_raw(name, msg)
         return work
 
     def send_to(self, name, data):
@@ -212,8 +226,9 @@ set, it will default to the same port that the app will be running on.
         """
         Returns the ip address of this computer, should be platfrom agnostic
         """
-        gws = netifaces.gateways()
-        return gws['default'][netifaces.AF_INET][0]
+        #gws = netifaces.gateways()
+        #return gws['default'][netifaces.AF_INET][0]
+        return netifaces.ifaddresses('wlp3s0')[netifaces.AF_INET][0]['addr']
 
 
 
