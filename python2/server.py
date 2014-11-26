@@ -1,14 +1,15 @@
 import socket
-import thread
+import threading
 import json
 import Queue
 import SocketServer
 import struct
+from multiprocessing import Process, Queue
 
 
 class UDPDetectionHandler(SocketServer.BaseRequestHandler):
     """
-    This class handles server detection pings over the broadcast thingy.
+    This class handles server detection over UDP broadcast.
     """
 
     def handle(self):
@@ -17,7 +18,17 @@ class UDPDetectionHandler(SocketServer.BaseRequestHandler):
         print "{} wrote:".format(self.client_address[0])
         print data
         if data = "to":
-            socket.sendto(self.server.server_name, self.client_address)
+            socket.sendto(self.server.server_name.ljust(16), self.client_address)
+
+
+def UDP_Runner(q,udp_server):
+    while True:
+        udp_server.handle_request()
+        try:
+            q.get_nowait()
+            break
+        except Queue.Empty:
+            continue
 
 
 class Server(object):
@@ -26,12 +37,8 @@ the name is sent to all clients requesting a server list. The detection port
 is the port that clients will ping while looking for the server.  If it is not
 set, it will default to the same port that the app will be running on.
 """
-    def __init__(self, name, port, timeout, detection_port=None, ip=None):
-        self.running_port = port
-
-        if detection_port is None:
-            detection_port = port
-        self.detection_port = detection_port
+    def __init__(self, name, port, timeout, ip=None):
+        self.port = port
 
         assert(len(name)<=16)
         self.name = name
@@ -41,16 +48,8 @@ set, it will default to the same port that the app will be running on.
             ip = _get_computer_ip()
         self.ip = ip
 
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.bind((ip, port))
-        # except socket.error , msg:
-    # print('Bind failed. Error Code : ' + str(msg[0]) + ' Message ' + msg[1])
         self.players = {}
 
-        self.udp_server = Socket.UDPServer(
-                (self.ip, self.detection_port),
-                UDPDetectionHandler);
-        self.udp_server.server_name = self.name # allow broadcast of name
 
     def open_loby(max_players, timeout):
         """
@@ -58,24 +57,43 @@ set, it will default to the same port that the app will be running on.
         max_players have joined or it times out
         """
 
-        this.s.listen(max_players*2) 
-        # ^ this limits how many conection it will keep queued up and might
-        #       need to be changed later
+        # make UDP server
+        udp_server = Socket.UDPServer(
+                (self.ip, self.port),
+                UDPDetectionHandler)
+        udp_server.server_name = self.name # allow broadcast of name
+        udp_server.timeout = .05
+
+        # start UDP server in another process
+        udp_q = Queue()
+        udp_p = Process(target=UDP_Runner, args=(udp_q,udp_server))
+        udp_p.start()
+
+        # make a socket for the loby
+        socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        socket.bind((self.ip, self.port))
+        socket.listen(3)
+        socket.setblocking(False)
         player_count = 0
         t_initial = time.clock()
 
-        msg = json.dumps({"name":name, "ip":self.ip})
-
         while player_count < max_players and time.clock()-t_initial < timeout:
-            conn, addr = s.accept()
-            rec = json.loads(conn.recv(512))
-            if rec['type'] == "ping":
-                conn.send(msg)
-                conn.close()
-
-            elif rec["type"] == "join":
+            try:
+                conn, addr = socket.accept()
+                rec = json.loads(conn.recv(512))
                 self.players[rec['name']] = conn
                 player_count += 1
+
+            except socket.error:
+                continue
+
+
+        socket.close()
+
+        # close UDP server
+        udp_q.put(1);
+        udp_p.join()
+
         return player_count
 
     def receive_from_all(self):
