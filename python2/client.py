@@ -8,6 +8,7 @@ import struct
 class Client(object):
     """A client networking object"""
     def __init__(self, name, port):
+        assert(len(name) <= 16)
         self.name = name
         self.port = port
 
@@ -15,20 +16,25 @@ class Client(object):
         """
         Get's the list of available servers on this port.
         """
-        broadcast_sock = socket.socket(AF_INET, SOCK_DGRAM)
-        broadcast_sock.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
+        broadcast_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        broadcast_sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
         servers = {}
 
         for i in xrange(2):
             broadcast_sock.sendto("to", ('<broadcast>', self.port))
-            start_time = time.time()
-            while (time.time() - start_time < timeout):
+            start_time = time.clock()
+            while (time.clock() - start_time < timeout):
                 data, address = broadcast_sock.recvfrom(16)
 
                 servers[data.strip()] = address
 
         return servers
+
+    def join_server(address):
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.connect((address, self.port))
+        self.sock.sendall(self.name.ljust(16))
 
     def get_data(self):
         """returns any new data sent from the server"""
@@ -50,5 +56,5 @@ class Client(object):
         """Sends a string of bytes back to the server"""
         p_size = len(msg)
         p_size = struct.pack("!H", p_size)
-        self.sock.send(p_size)
-        self.sock.send(msg)
+        self.sock.sendall(p_size)
+        self.sock.sendall(msg)

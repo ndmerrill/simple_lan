@@ -80,8 +80,8 @@ set, it will default to the same port that the app will be running on.
         while player_count < max_players and time.clock()-t_initial < timeout:
             try:
                 conn, addr = socket.accept()
-                rec = json.loads(conn.recv(512))
-                self.players[rec['name']] = conn
+                rec = json.loads(conn.recv(16))
+                self.players[rec.strip()] = conn
                 player_count += 1
 
             except socket.error:
