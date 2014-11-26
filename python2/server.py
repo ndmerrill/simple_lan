@@ -41,8 +41,8 @@ def lobby_receiver(pipe, max_players, timeout):
         while player_count < max_players and time.clock()-t_initial < timeout:
             try:
                 conn, addr = socket.accept()
-                rec = json.loads(conn.recv(512))
-                pipe.send((rec['name'], conn))
+                rec = conn.recv(16)
+                pipe.send((rec.strip(), conn))
                 player_count += 1
 
             except socket.error:
