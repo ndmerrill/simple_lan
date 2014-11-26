@@ -3,6 +3,7 @@ import json
 import SocketServer
 import struct
 import multiprocessing
+from multiprocessing import reduction
 import netifaces
 import Queue
 import time
@@ -16,8 +17,8 @@ class UDPDetectionHandler(SocketServer.BaseRequestHandler):
     def handle(self):
         data = self.request[0].strip()
         socket = self.request[1]
-        print "{} wrote:".format(self.client_address[0])
-        print data
+        #print "{} wrote:".format(self.client_address[0])
+        #print data
         if data == "to":
             socket.sendto(self.server.server_name.ljust(16), self.client_address)
 
@@ -52,16 +53,18 @@ def lobby_receiver(recv_queue, send_queue, ip, port, max_players, timeout):
                 conn, addr = sock.accept()
                 rec = conn.recv(16)
                 conn.setblocking(False)
-                send_queue.put((rec.strip(), conn))
+
+                # because you can't pickle a socket object - this is needed
+                conn_to_send = reduction.reduce_handle(conn.fileno())
+
+                send_queue.put((rec.strip(), conn_to_send))
                 player_count += 1
 
             except socket.error:
                 continue
     finally:
-        print "closing"
         sock.shutdown(socket.SHUT_RDWR)
         sock.close()
-        print "closed"
 
 
 class Server(object):
@@ -86,7 +89,7 @@ set, it will default to the same port that the app will be running on.
         max_players have joined or it times out
         """
         # make UDP server
-        print self.ip
+        #print self.ip
         udp_server = SocketServer.UDPServer(
                 ('<broadcast>', self.port),
                 UDPDetectionHandler)
@@ -134,7 +137,9 @@ set, it will default to the same port that the app will be running on.
         """
         while not self.recv_queue.empty():
             name, conn = self.recv_queue.get()
-            self.players[name] = conn
+            conn_info = reduction.rebuild_handle(conn)
+            conn_usable = socket.fromfd(conn_info, socket.AF_INET, socket.SOCK_STREAM)
+            self.players[name] = conn_usable
         return len(self.players.keys())
 
     def close_lobby(self):
@@ -147,9 +152,12 @@ set, it will default to the same port that the app will be running on.
         self.udp_p.join()
         self.send_queue.put(1);
 
-        while not self.recv_queue.empty():
-            name, conn = self.lobby_pipe.get()
-            self.players[name] = conn
+        #while not self.recv_queue.empty():
+        #    name, conn = self.recv_queue.get()
+        #    conn_info = reduction.rebuild_handle(conn)
+        #    conn_usable = socket.fromfd(conn_info, socket.AF_INET, socket.SOCK_STREAM)
+        #    self.players[name] = conn_usable
+
         self.lobby_process.join()
         return len(self.players.keys())
 

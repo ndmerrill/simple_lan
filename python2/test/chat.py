@@ -1,8 +1,8 @@
 import os, sys
 from multiprocessing import Process, Queue
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
-#import server
-#import client
+import server
+import client
 
 print "A simple LAN chat program."
 
@@ -12,8 +12,8 @@ while (server_or_client != "c" and server_or_client != "j"):
 
 if server_or_client == "j":
     name = raw_input("Enter your name: ")[:16]
-    client = Client(name, 44242)
-    servers = client.get_server_list()
+    cli = client.Client(name, 44242)
+    servers = cli.get_server_list(timeout=.5)
     print "Servers found:"
     servers_names = servers.keys()
     for server_loc in xrange(len(servers_names)):
@@ -30,57 +30,55 @@ if server_or_client == "j":
             pass
         selection = raw_input("Enter a number between 0 and", str(len(servers_names)-1) + ": ")
 
-    client.join_server(servers[servers_names[selection_int]])
+    cli.join_server(servers[servers_names[selection_int]][0])
 
     print "Connected"
 
     data = ""
     while data != "st":
-        data = client.get_data_raw()
+        data = cli.get_data_raw()
+        print data
 
     print "Chat started"
 
     while True:
-        msg = raw_input("> ")
-        # get and update new data from server
-
-def handle_servers(q,server):
-    while True:
-        data = server.receive_from_all_raw()
-        server.send_to_all_raw(data)
-        try:
-            q.get_nowait()
-            break
-        except Queue.Empty:
-            continue
+        msg = raw_input("> ").strip()
+        data = cli.get_data_raw()
+        if data != None:
+            print data
+        if msg != "":
+            cli.send_raw(msg)
 
 else:
     name = raw_input("Enter the name of your server: ")[:16]
-    server = Server(name, 44242)
-    client = Client("host", 44242)
-    server.open_lobby()
-    try:
+    serv = server.Server(name, 44242)
+    cli = client.Client("host", 44242)
+    serv.open_lobby(10)
+    """try:
         while True:
-            print "\rPlayers joined:", server.count_lobby()
+            #print "\rPlayers joined:", serv.count_lobby(),
+            pass
     except KeyboardInterrupt:
-        pass
-    client.join_server(server.ip)
-    server.close_lobby()
+        pass"""
+    a = raw_input("Say when to stop")
+    cli.join_server(serv.ip)
+    serv.close_lobby()
 
-    server.send_to_all_raw("st")
+    print serv.send_to_all_raw("st")
 
-    data = client.get_data_raw()
-
-    q = Queue()
-    p = Process(target=handle_servers, args=(q,server))
-    p.start()
+    data = cli.get_data_raw()
 
     while True:
-        ms = raw_input("> ")
-        # get and update new data from server
+        msg = raw_input("> ").strip()
+        data = cli.get_data_raw()
+        if data != None:
+            print data
+        if msg != "":
+            cli.send_raw(msg)
+        data = serv.receive_from_all_raw()
+        for a in data.keys():
+            serv.send_to_all_raw(dat[a])
 
-    q.put(1);
-    p.join()
 
 
 

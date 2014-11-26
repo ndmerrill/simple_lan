@@ -49,8 +49,9 @@ class Client(object):
         """returns any new data sent from the server"""
         try:
             p_size = self.sock.recv(2)
+            print len(p_size)
             p_size = struct.unpack("!H", p_size)
-            data = self.sock.recv(p_size)
+            data = self.sock.recv(int(p_size))
         except socket.error:
             return None
         return data
