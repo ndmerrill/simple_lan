@@ -19,15 +19,12 @@ class Client(object):
         broadcast_sock.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
 
         servers = {}
-
         for i in xrange(2):
             broadcast_sock.sendto("to", ('<broadcast>', self.port))
             start_time = time.time()
             while (time.time() - start_time < timeout):
                 data, address = broadcast_sock.recvfrom(16)
-
                 servers[data.strip()] = address
-
         return servers
 
     def get_data(self):

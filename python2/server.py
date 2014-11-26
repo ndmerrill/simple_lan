@@ -1,10 +1,8 @@
 import socket
-import threading
 import json
-import Queue
 import SocketServer
 import struct
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue, Pipe
 
 
 class UDPDetectionHandler(SocketServer.BaseRequestHandler):
@@ -30,49 +28,12 @@ def UDP_Runner(q,udp_server):
         except Queue.Empty:
             continue
 
-
-class Server(object):
-    """Server(name, port[, ip=])
-the name is sent to all clients requesting a server list. The detection port
-is the port that clients will ping while looking for the server.  If it is not
-set, it will default to the same port that the app will be running on.
-"""
-    def __init__(self, name, port, timeout, ip=None):
-        self.port = port
-
-        assert(len(name)<=16)
-        self.name = name
-        self.timeout = timeout
-
-        if ip == None:
-            ip = _get_computer_ip()
-        self.ip = ip
-
-        self.players = {}
-
-
-    def open_loby(max_players, timeout):
-        """
-        open_loby(max_players, max_wait_time) -> waits until either
-        max_players have joined or it times out
-        """
-
-        # make UDP server
-        udp_server = Socket.UDPServer(
-                (self.ip, self.port),
-                UDPDetectionHandler)
-        udp_server.server_name = self.name # allow broadcast of name
-        udp_server.timeout = .05
-
-        # start UDP server in another process
-        udp_q = Queue()
-        udp_p = Process(target=UDP_Runner, args=(udp_q,udp_server))
-        udp_p.start()
-
-        # make a socket for the loby
+def lobby_receiver(pipe, max_players, timeout):
+    # make a socket for the lobby
+    try: 
         socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         socket.bind((self.ip, self.port))
-        socket.listen(3)
+        socket.listen(5)
         socket.setblocking(False)
         player_count = 0
         t_initial = time.clock()
@@ -81,20 +42,79 @@ set, it will default to the same port that the app will be running on.
             try:
                 conn, addr = socket.accept()
                 rec = json.loads(conn.recv(512))
-                self.players[rec['name']] = conn
+                pipe.send((rec['name'], conn))
                 player_count += 1
 
             except socket.error:
                 continue
-
-
+    finally:
         socket.close()
+        pipe.close()
+    
 
+class Server(object):
+    """Server(name, port[, ip=])
+the name is sent to all clients requesting a server list. The detection port
+is the port that clients will ping while looking for the server.  If it is not
+set, it will default to the same port that the app will be running on.
+"""
+    def __init__(self, name, port, ip=None):
+        self.port = port
+        assert(len(name)<=16)
+        self.name = name
+        if ip == None:
+            ip = _get_computer_ip()
+        self.ip = ip
+        self.players = {}
+
+
+    def open_lobby(max_players, timeout=604800):
+        """
+        open_lobby(max_players, max_wait_time) -> waits until either
+        max_players have joined or it times out
+        """
+        # make UDP server
+        udp_server = Socket.UDPServer(
+                (self.ip, self.port),
+                UDPDetectionHandler)
+        udp_server.server_name = self.name # allow broadcast of name
+        udp_server.timeout = .05
+
+        # start UDP server in another process
+        self.udp_q = Queue()
+        self.udp_p = Process(target=UDP_Runner, args=(self.udp_q,udp_server))
+        self.udp_p.start()
+
+        self.lobby_pipe, child_pipe = Pipe(False)
+        self.lobby_process = Process(
+            target=lobby_receiver, args=(child_pipe, max_players, timeout))
+        self.lobby_process.start()
+
+    def count_lobby():
+        """
+        Only use while the lobby is open retrieves any new players and returns
+        the number of connected players
+        """
+        while self.lobby_pipe.poll():
+            name, conn = self.lobby_pipe.recv()
+            self.players[name] = conn
+        return len(self.players.keys())
+
+    def close_lobby():
+        """
+        Closes the lobby and retrieves the player connections
+        Returns the number of connected players
+        """
         # close UDP server
-        udp_q.put(1);
-        udp_p.join()
-
-        return player_count
+        self.udp_q.put(1);
+        self.udp_p.join()
+        self.lobby_process.join()
+        # closes the other end of the pipe to prevent more data from being
+        # added on to the end
+        while self.lobby_pipe.poll():
+            name, conn = self.lobby_pipe.recv()
+            self.players[name] = conn
+        return len(self.players.keys())
 
     def receive_from_all(self):
         """Receives json data from all of the connected clients"""
@@ -135,16 +155,12 @@ set, it will default to the same port that the app will be running on.
             self.send_to_raw(name, msg)
 
     def send_to(self, name, data):
-        """
-        Like send_to_all, but only sends to a single player
-        """
+        """Like send_to_all, but only sends to a single player"""
         msg = json.dumps(data)
         self.send_to_raw(msg, name)
 
     def send_to_raw(self, name, msg):
-        """
-        Like send_to_all_raw, but only sends to a single player
-        """
+        """Like send_to_all_raw, but only sends to a single player"""
         p_size = len(msg)
         p_size = struct.pack("!H", p_size)
         self.sock.send(p_size)
