@@ -37,7 +37,7 @@ if server_or_client == "j":
     data = ""
     while data != "st":
         data = cli.get_data_raw()
-        print data
+        #print data
 
     print "Chat started"
 
@@ -62,9 +62,10 @@ else:
         pass"""
     a = raw_input("Say when to stop")
     cli.join_server(serv.ip)
+    serv.count_lobby()
     serv.close_lobby()
 
-    print serv.send_to_all_raw("st")
+    serv.send_to_all_raw("st")
 
     data = cli.get_data_raw()
 
@@ -77,7 +78,8 @@ else:
             cli.send_raw(msg)
         data = serv.receive_from_all_raw()
         for a in data.keys():
-            serv.send_to_all_raw(dat[a])
+            if data[a] != None:
+                serv.send_to_all_raw(data[a])
 
 
 

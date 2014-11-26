@@ -183,7 +183,8 @@ set, it will default to the same port that the app will be running on.
         try:
             data = conn.recv(2)
             p_size = struct.unpack("!H", data)
-            data = conn.recv(p_size)
+            #print p_size
+            data = conn.recv(int(p_size[0]))
             return data
         except socket.error:
             return None
