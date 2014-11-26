@@ -30,7 +30,7 @@ def UDP_Runner(q,udp_server):
 
 def lobby_receiver(pipe, max_players, timeout):
     # make a socket for the lobby
-    try: 
+    try:
         socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         socket.bind((self.ip, self.port))
         socket.listen(5)
@@ -42,6 +42,7 @@ def lobby_receiver(pipe, max_players, timeout):
             try:
                 conn, addr = socket.accept()
                 rec = conn.recv(16)
+                conn.setblocking(False)
                 pipe.send((rec.strip(), conn))
                 player_count += 1
 
@@ -50,7 +51,7 @@ def lobby_receiver(pipe, max_players, timeout):
     finally:
         socket.close()
         pipe.close()
-    
+
 
 class Server(object):
     """Server(name, port[, ip=])
@@ -88,6 +89,7 @@ set, it will default to the same port that the app will be running on.
 
 
         # make a socket for the loby
+        # can we delete this now?
         socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         socket.bind((self.ip, self.port))
         socket.listen(3)
@@ -104,7 +106,7 @@ set, it will default to the same port that the app will be running on.
 
             except socket.error:
                 continue
->>>>>>> FETCH_HEAD
+        #until here?
 
         self.lobby_pipe, child_pipe = Pipe(False)
         self.lobby_process = Process(
@@ -156,36 +158,48 @@ set, it will default to the same port that the app will be running on.
     def receive_from_raw(self, name):
         """Receives a string of bytes from a given client"""
         conn = self.players[name]
-        data = conn.recv(2)
-        p_size = struct.unpack("!H", data)
-        data = conn.recv(p_size)
-        return data
+        try:
+            data = conn.recv(2)
+            p_size = struct.unpack("!H", data)
+            data = conn.recv(p_size)
+            return data
+        except socket.error:
+            return None
 
     def receive_from(self, name):
         """Receives a list or dictionary from a player"""
-        return json.loads(self.receive_from_raw(name))
+        data = self.receive_from_raw(name)
+        if data = None:
+            return None
+        return json.loads(data)
 
     def send_to_all(self, data):
         """Sends an array or dictionary to all of the connected clients"""
         msg = json.dumps(data)
-        self.send_to_all_raw(msg)
+        return self.send_to_all_raw(msg)
 
     def send_to_all_raw(self, msg):
         """Sends a string of bytes to all of the connected clients"""
+        work = True
         for name in self.players.keys():
-            self.send_to_raw(name, msg)
+            work = work && self.send_to_raw(name, msg)
+        return work
 
     def send_to(self, name, data):
         """Like send_to_all, but only sends to a single player"""
         msg = json.dumps(data)
-        self.send_to_raw(msg, name)
+        return self.send_to_raw(msg, name)
 
     def send_to_raw(self, name, msg):
         """Like send_to_all_raw, but only sends to a single player"""
         p_size = len(msg)
         p_size = struct.pack("!H", p_size)
-        self.sock.send(p_size)
-        self.players[name].send(msg)
+        try:
+            self.players[name].sendall(p_size)
+            self.players[name].sendall(msg)
+            return True
+        except socket.error:
+            return False
 
     def close_server(self):
         """

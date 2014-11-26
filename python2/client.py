@@ -32,26 +32,37 @@ class Client(object):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((address, self.port))
         self.sock.sendall(self.name.ljust(16))
+        self.sock.setblocking(False)
 
     def get_data(self):
         """returns any new data sent from the server"""
-        return json.loads(self.get_raw())
+        data = self.get_data_raw()
+        if data == None:
+            return None
+        return json.loads(data)
 
     def get_data_raw(self):
         """returns any new data sent from the server"""
-        p_size = self.sock.recv(2)
-        p_size = struct.unpack("!H", p_size)
-        data = self.sock.recv(p_size)
+        try:
+            p_size = self.sock.recv(2)
+            p_size = struct.unpack("!H", p_size)
+            data = self.sock.recv(p_size)
+        except socket.error:
+            return None
         return data
 
     def send(self, data):
         """Sends a list or dictionary back to the server"""
         msg = json.dumps(data)
-        self.send_raw(msg)
+        return self.send_raw(msg)
 
     def send_raw(self, msg):
         """Sends a string of bytes back to the server"""
         p_size = len(msg)
         p_size = struct.pack("!H", p_size)
-        self.sock.sendall(p_size)
-        self.sock.sendall(msg)
+        try:
+            self.sock.sendall(p_size)
+            self.sock.sendall(msg)
+            return True
+        except socket.error:
+            return False
