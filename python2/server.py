@@ -81,9 +81,30 @@ set, it will default to the same port that the app will be running on.
         udp_server.timeout = .05
 
         # start UDP server in another process
+
         self.udp_q = Queue()
         self.udp_p = Process(target=UDP_Runner, args=(self.udp_q,udp_server))
         self.udp_p.start()
+
+
+        # make a socket for the loby
+        socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        socket.bind((self.ip, self.port))
+        socket.listen(3)
+        socket.setblocking(False)
+        player_count = 0
+        t_initial = time.clock()
+
+        while player_count < max_players and time.clock()-t_initial < timeout:
+            try:
+                conn, addr = socket.accept()
+                rec = json.loads(conn.recv(16))
+                self.players[rec.strip()] = conn
+                player_count += 1
+
+            except socket.error:
+                continue
+>>>>>>> FETCH_HEAD
 
         self.lobby_pipe, child_pipe = Pipe(False)
         self.lobby_process = Process(
