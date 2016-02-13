@@ -147,6 +147,9 @@ set, it will default to the same port that the app will be running on.
         Closes the lobby and retrieves the player connections
         Returns the number of connected players
         """
+
+        self.count_lobby()
+
         # close UDP server
         self.udp_q.put(1);
         self.udp_p.join()
