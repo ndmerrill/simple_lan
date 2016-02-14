@@ -11,12 +11,14 @@ def process_poll(target):
         """target is the /24 subnet targeted by this thread and data is the
             data to be sent"""
         # print "sends?"
+        # print target
         data = ipHelper.pack_ip()
         ip = ipHelper.get_ip()
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
         subnet_prefix = ip.split(".")[0] + "." + ip.split(".")[1] + "."
         target_b = subnet_prefix + str(target) + "."
+        # print target_b
         for i in xrange(256):
             # print("hi" + str(i))
 
@@ -30,12 +32,13 @@ def process_poll(target):
             # print("done" + str(i))
 
         target_b = subnet_prefix + str(target+1) + "."
-        for i in xrange(256):
+        # print target_b
+        for j in xrange(256):
             # print("hi" + str(i))
 
             # btime = time.clock()
             try:
-                sock.sendto(data, (str(target_b)+str(i), PORT))
+                sock.sendto(data, (str(target_b)+str(j), PORT))
             except socket.error as msg:
                 pass
 

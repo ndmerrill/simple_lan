@@ -119,7 +119,7 @@ if __name__ == '__main__':
     s = Server(40393, "deuterium")
     s.open_lobby()
     try:
-        for i in xrange(10):
+        for i in xrange(20):
             print s.players.keys()
             s.pull_lobby()
             time.sleep(1)
