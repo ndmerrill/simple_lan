@@ -6,10 +6,10 @@ import client
 
 PORT = 40393
 
-def get_input(pipe):
+def get_input(cli, pipe):
     while True:
-        if parent.poll():
-            message = parent.recv()
+        if pipe.poll():
+            message = pipe.recv()
             cli.send_raw(message)
             print("sent message '" + message + "'")
         data = cli.get_data_raw()
@@ -55,18 +55,21 @@ if server_or_client == "j":
 
     print("Chat started")
     parent, child = Pipe()
-    p = Process(target=get_input, args=(child,))
+    p = Process(target=get_input, args=(cli, child,))
     p.start()
 
-    while True:
-        a = raw_input("> ").strip()
+    a = raw_input("> ").strip()
+    while a:
         parent.send(a)
+        a = raw_input("> ").strip()
     p.join()
 
 else:
     name = raw_input("Enter the name of your server: ")[:16]
     serv = server.Server(name, 40393)
-    serv.open_lobby(16)
+    serv.open_lobby()
+    raw_input()
+    serv.close_lobby()
 
     while True:
         data = serv.receive_from_all_raw()
