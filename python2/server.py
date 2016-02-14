@@ -26,7 +26,7 @@ import sys
 
 
 class Server():
-    def __init__(self, port, name):
+    def __init__(self, name, port):
         self.port = port
         self.ip = ipHelper.get_ip()
         self.name = name
@@ -48,7 +48,7 @@ class Server():
             player = self.player_queue.get()
             print(player)
             ip = player.pop(0)
-            self.players[ip] = players
+            self.players[ip] = player
 
     def close_lobby(self):
         print("to close")
@@ -96,20 +96,30 @@ class LobbyWorker(threading.Thread):
                 except socket.error as msg:
                     pass
                     # print msg
-                
-                try:
-                    conn, addr = self.game_sock.accept()
-                    conn.sendall("\x00")
-                    name = self.game_sock.recv(16).strip()
-                    print (addr, name, conn)
-                    self.q.put((addr, name, conn))
-                except socket.error as msg:
-                    # print msg
-                    pass
+
+                while True:
+                    try:
+                        conn, addr = self.game_sock.accept()
+                        print conn, addr
+                        conn.sendall("\x00")
+                        break;
+                    except socket.error as msg:
+                        pass
+                print("hello")
+                while True:
+                    try:
+                        name = conn.recv(16).strip()
+                        print("here")
+                        break;
+                    except socket.error as msg:
+                        print(msg)
+                print (addr, name, conn)
+                self.q.put([addr, name, conn])
+
                 # print("ending")
         finally:
             udp_sock.close()
-            
+
 
     def join(self, timeout=None):
         self.stop_request = True
