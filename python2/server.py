@@ -57,7 +57,7 @@ class Server():
         self.lobby.join(timeout=5)
         print("done")
 
-    def receive_from_all_raw():
+    def receive_from_all_raw(self):
         out = {}
         for name in self.players.keys():
             data = receive_from_raw(name)
@@ -65,7 +65,7 @@ class Server():
                 out[name] = data
         return out
 
-    def receive_from_raw(name):
+    def receive_from_raw(self, name):
         conn = players[name][1]
         data = conn.recv(2)
         if data:
@@ -74,14 +74,14 @@ class Server():
             return content
         return None
 
-    def send_to_raw(name, data):
+    def send_to_raw(self, name, data):
         data = str(data)
         conn = players[name][1]
         l = struct.pack("!H", len(data))
         conn.sendall(l)
         conn.sendall(data)
 
-    def send_to_all_raw(data):
+    def send_to_all_raw(self, data):
         for name in self.players.keys():
             send_to_raw(name, data)
 
@@ -112,9 +112,11 @@ class LobbyWorker(threading.Thread):
         try:   
 
             while not self.stop_request:
+
                 # print(self.stop_request)
                 try:
                     data = udp_sock.recv(4)
+                    print(data)
                     # print(ipHelper.unpack_ip(data))
                     # if data:
                     connection_ip = ipHelper.unpack_ip(data)
@@ -126,14 +128,13 @@ class LobbyWorker(threading.Thread):
                     pass
                     # print msg
 
-                while True:
-                    try:
-                        conn, addr = self.game_sock.accept()
-                        # print conn, addr
-                        conn.sendall("\x00")
-                        break;
-                    except socket.error as msg:
-                        pass
+                try:
+                    conn, addr = self.game_sock.accept()
+                    # print conn, addr
+                    conn.sendall("\x00")
+                    break;
+                except socket.error as msg:
+                    continue
                 # print("hello")
                 while True:
                     try:
@@ -155,7 +156,7 @@ class LobbyWorker(threading.Thread):
         super(LobbyWorker, self).join(timeout)
 
 if __name__ == '__main__':
-    s = Server(40393, "deuterium")
+    s = Server("me", 40393)
     s.open_lobby()
     try:
         for i in xrange(20):
