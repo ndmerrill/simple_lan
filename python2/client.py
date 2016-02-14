@@ -28,15 +28,18 @@ class Client():
 
         data = ipHelper.pack_ip()
 
+        print("i")
         threads = []
         for subnet in subnets_24:
             t = threading.Thread(target=self._subnet_poller, args=(subnet, data))
             threads.append(t)
             t.start()
 
+        print("i")
         for t in threads:
             t.join()
 
+        print("i")
         time.sleep(wait_time)
 
         out = []
@@ -53,28 +56,35 @@ class Client():
                 print ip, name, port
 
         except socket.error as msg:
+            print(msg)
             pass
 
         finally:
             try:
                 conn.close()
             except :
-            pass
+                pass
 
         return out
 
     def _subnet_poller(self, target, data):
         """target is the /24 subnet targeted by this thread and data is the
             data to be sent"""
-        # print "sends?"
+        print "sends?"
         for i in xrange(256):
+            # print("hi" + str(i))
+
+            btime = time.clock()
             try:
                 self.server_discovery_port.sendto(data, (target+str(i), self.port))
             except socket.error as msg:
-                # print msg, target+str(i)
                 pass
                 # catches permission denied errors and ignores them because it
                 # doesn't matter if a couple of ip addresses don't work
+            # print("done" + str(i))
+
+            print(time.clock()-btime)
+        print("done")
 
     def join_server(self, ip):
         self.connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -111,5 +121,7 @@ class Client():
 
 
 if __name__ == '__main__':
-    c = Client(40393)
-    print c.getServerList()
+    c = Client("nathan", 40393)
+    l = c.get_server_list()
+    print(l)
+
