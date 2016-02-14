@@ -1,28 +1,21 @@
-# import socket
-
-
-# def start_server(port):
-
-    # sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    # sock.bind(('<broadcast>', port))
-
-    # while True:
-        # data, addr = sock.recvfrom(1024)
-        # print(data)
-# start_server(40393)
-# Echo server program
-
 import socket
 import ipHelper
+import struct
 
-HOST = ipHelper.getIp()
+HOST = ipHelper.get_ip()
 PORT = 40393
+NAME = "hello"
 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 s.bind((HOST, PORT))
 
 while True:
-    data = s.recv(1024)
-    if not data: break
-    print(data)
+    data = s.recv(4)
+    connection_ip = ipHelper.unpack_ip(data)
+    print(connection_ip)
+    connecting = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    connecting.connect((connection_ip, PORT))
+    connecting.sendall(ipHelper.pack_ip(ipHelper.get_ip()) +
+            struct.pack("I", PORT) + NAME.rjust(16))
+    connecting.close()
 
 conn.close()
