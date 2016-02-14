@@ -103,7 +103,7 @@ class Client():
                 print ip, name, port
 
         except socket.error as msg:
-            print(msg)
+            # print(msg)
             pass
 
         finally:
@@ -143,12 +143,12 @@ class Client():
         self.connection.connect((ip, self.port))
 
         self.connection.send(self.name.rjust(16))
-        data = int(self.connection.recv(1));
+        data = struct.unpack("!B", self.connection.recv(1));
         if (data == 1):
             print("server is full")
             return False
         self.connection.setblocking(False)
-        self.connected = true
+        self.connected = True
 
     def get_data_raw(self):
         try:
@@ -176,4 +176,6 @@ if __name__ == '__main__':
     c = Client("nathan", 40393)
     l = c.get_server_list()
     print(l)
+    c.join_server("192.168.30.46")
+    print c.connection
 

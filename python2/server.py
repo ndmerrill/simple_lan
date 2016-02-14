@@ -86,13 +86,13 @@ class LobbyWorker(threading.Thread):
                 # print(self.stop_request)
                 try:
                     data = udp_sock.recv(4)
-                    print(ipHelper.unpack_ip(data))
-                    if data:
-                        connection_ip = ipHelper.unpack_ip(data)
-                        reply_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                        reply_sock.connect((connection_ip, self.port))
-                        reply_sock.sendall(package)
-                        reply_sock.close()
+                    # print(ipHelper.unpack_ip(data))
+                    # if data:
+                    connection_ip = ipHelper.unpack_ip(data)
+                    reply_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    reply_sock.connect((connection_ip, self.port))
+                    reply_sock.sendall(package)
+                    reply_sock.close()
                 except socket.error as msg:
                     pass
                     # print msg
@@ -101,7 +101,7 @@ class LobbyWorker(threading.Thread):
                     conn, addr = self.game_sock.accept()
                     conn.sendall("\x00")
                     name = self.game_sock.recv(16).strip()
-                    print addr
+                    print (addr, name, conn)
                     self.q.put((addr, name, conn))
                 except socket.error as msg:
                     # print msg
