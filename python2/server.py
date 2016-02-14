@@ -33,7 +33,7 @@ class Server():
         self.player_queue = Queue.Queue()
         self.game_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.game_sock.setblocking(0)
-        self.game_sock.bind(("", port))
+        self.game_sock.bind((self.ip, port))
 
 
     def open_lobby(self, callback=None):
@@ -69,8 +69,8 @@ class LobbyWorker(threading.Thread):
 
     def run(self):
         udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        # udp_sock.bind((ipHelper.get_ip(), self.port))
-        udp_sock.bind(("", self.port))
+        udp_sock.bind((ipHelper.get_ip(), self.port))
+        # udp_sock.bind((self.ip, self.port))
         # udp_sock.setblocking(0)
 
         package = ipHelper.pack_ip() + struct.pack("I", self.port) + self.name.rjust(16)
