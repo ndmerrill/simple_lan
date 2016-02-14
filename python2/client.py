@@ -1,8 +1,36 @@
+import multiprocessing
 import socket
 import ipHelper
 import threading
 import time
 import struct
+
+PORT = 40393
+
+def process_poll(target):
+        """target is the /24 subnet targeted by this thread and data is the
+            data to be sent"""
+        # print "sends?"
+        data = ipHelper.pack_ip()
+        ip = ipHelper.get_ip()
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+        subnet_prefix = ip.split(".")[0] + "." + ip.split(".")[1] + "."
+        target = subnet_prefix + str(target) + "."
+        for i in xrange(256):
+            # print("hi" + str(i))
+
+            # btime = time.clock()
+            try:
+                sock.sendto(data, (str(target)+str(i), PORT))
+            except socket.error as msg:
+                pass
+                # catches permission denied errors and ignores them because it
+                # doesn't matter if a couple of ip addresses don't work
+            # print("done" + str(i))
+
+            # print(time.clock()-btime)
+        # print("done")
 
 class Client():
     def __init__(self, name, port):
@@ -17,10 +45,10 @@ class Client():
     def get_server_list(self, wait_time=1.5):
         #  the subnet prefix is the first two elements from the client ip
         #  address.  eg 192.168.
-        subnet_prefix = self.myIP.split(".")[0] + "." + self.myIP.split(".")[1] + "."
+        # subnet_prefix = self.myIP.split(".")[0] + "." + self.myIP.split(".")[1] + "."
 
         # this creates a list of /24 subnets to ping
-        subnets_24 = [subnet_prefix + str(i) + "." for i in xrange(256)]
+        # subnets_24 = [subnet_prefix + str(i) + "." for i in xrange(256)]
         return_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         return_sock.bind((self.myIP, self.port))
         return_sock.setblocking(0)
@@ -29,15 +57,20 @@ class Client():
         data = ipHelper.pack_ip()
 
         print("i")
-        threads = []
-        for subnet in subnets_24:
-            t = threading.Thread(target=self._subnet_poller, args=(subnet, data))
-            threads.append(t)
-            t.start()
+        # threads = []
+        # for subnet in subnets_24:
+        #     t = threading.Thread(target=self._subnet_poller, args=(subnet, data))
+        #     threads.append(t)
+        #     t.start()
+
+        pool = multiprocessing.Pool(processes=256)
+        result = pool.map_async(process_poll, xrange(256))
 
         print("i")
-        for t in threads:
-            t.join()
+        # for t in threads:
+        #     t.join()
+
+        result.get(timeout=10)
 
         self.server_discovery_port.close()
         print("i")
@@ -69,24 +102,28 @@ class Client():
 
         return out
 
-    def _subnet_poller(self, target, data):
-        """target is the /24 subnet targeted by this thread and data is the
-            data to be sent"""
-        # print "sends?"
-        for i in xrange(256):
-            # print("hi" + str(i))
+    # def _subnet_poller(self, target):
+    #     """target is the /24 subnet targeted by this thread and data is the
+    #         data to be sent"""
+    #     # print "sends?"
+    #     data = ipHelper.pack_ip()
 
-            # btime = time.clock()
-            try:
-                self.server_discovery_port.sendto(data, (target+str(i), self.port))
-            except socket.error as msg:
-                pass
-                # catches permission denied errors and ignores them because it
-                # doesn't matter if a couple of ip addresses don't work
-            # print("done" + str(i))
+    #     subnet_prefix = self.myIP.split(".")[0] + "." + self.myIP.split(".")[1] + "."
+    #     target = subnet_prefix + target + "."
+    #     for i in xrange(256):
+    #         # print("hi" + str(i))
 
-            # print(time.clock()-btime)
-        # print("done")
+    #         # btime = time.clock()
+    #         try:
+    #             self.server_discovery_port.sendto(data, (target+str(i), self.port))
+    #         except socket.error as msg:
+    #             pass
+    #             # catches permission denied errors and ignores them because it
+    #             # doesn't matter if a couple of ip addresses don't work
+    #         # print("done" + str(i))
+
+    #         # print(time.clock()-btime)
+    #     # print("done")
 
     def join_server(self, ip):
         self.connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

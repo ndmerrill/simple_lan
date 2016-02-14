@@ -4,6 +4,7 @@ import struct
 import Queue
 import time
 import threading
+import sys
 
 # HOST = ipHelper.get_ip()
 # PORT = 40393
@@ -123,3 +124,4 @@ if __name__ == '__main__':
     
 
     s.shutdown()
+    sys.exit()
