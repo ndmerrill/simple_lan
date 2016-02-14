@@ -33,7 +33,7 @@ class Server():
         self.player_queue = Queue.Queue()
         self.game_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.game_sock.setblocking(0)
-        self.game_sock.bind(("", port))
+        self.game_sock.bind((self.ip, port))
 
 
     def open_lobby(self, callback=None):
@@ -64,13 +64,13 @@ class LobbyWorker(threading.Thread):
         self.callback = callback
         self.name = name
         self.port = port
-        self.stop_request = threading.Event()
+        self.stop_request = False
         self.game_sock = sock
 
     def run(self):
         udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        # udp_sock.bind((ipHelper.get_ip(), self.port))
-        udp_sock.bind(("", self.port))
+        udp_sock.bind((ipHelper.get_ip(), self.port))
+        # udp_sock.bind(("", self.port))
         # udp_sock.setblocking(0)
 
         package = ipHelper.pack_ip() + struct.pack("I", self.port) + self.name.rjust(16)
@@ -78,7 +78,7 @@ class LobbyWorker(threading.Thread):
         self.game_sock.listen(5)
         try:   
 
-            while not self.stop_request.isSet():
+            while not self.stop_request:
                 try:
                     data = udp_sock.recv(4)
                     print data
@@ -105,7 +105,7 @@ class LobbyWorker(threading.Thread):
             
 
     def join(self, timeout=None):
-        self.stop_request.set()
+        self.stop_request = True
         super(LobbyWorker, self).join(timeout)
 
 if __name__ == '__main__':
