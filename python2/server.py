@@ -43,16 +43,19 @@ class Server():
         self.lobby.start()
 
     def pull_lobby(self):
+        # print("hi")
         while not self.player_queue.empty():
             player = self.player_queue.get()
-            if player:
-                print player
+            print(player)
             ip = player.pop(0)
             self.players[ip] = players
 
     def close_lobby(self):
+        print("to close")
         self.pull_lobby()
+        print("pulled")
         self.lobby.join(timeout=5)
+        print("done")
 
     def shutdown(self):
         self.game_sock.close()
@@ -72,7 +75,7 @@ class LobbyWorker(threading.Thread):
         udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         udp_sock.bind((ipHelper.get_ip(), self.port))
         # udp_sock.bind(("", self.port))
-        # udp_sock.setblocking(0)
+        udp_sock.setblocking(0)
 
         package = ipHelper.pack_ip() + struct.pack("I", self.port) + self.name.rjust(16)
 
@@ -80,9 +83,10 @@ class LobbyWorker(threading.Thread):
         try:   
 
             while not self.stop_request:
+                # print(self.stop_request)
                 try:
                     data = udp_sock.recv(4)
-                    print data
+                    print(ipHelper.unpack_ip(data))
                     if data:
                         connection_ip = ipHelper.unpack_ip(data)
                         reply_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -90,7 +94,8 @@ class LobbyWorker(threading.Thread):
                         reply_sock.sendall(package)
                         reply_sock.close()
                 except socket.error as msg:
-                    print msg
+                    pass
+                    # print msg
                 
                 try:
                     conn, addr = self.game_sock.accept()
@@ -101,6 +106,7 @@ class LobbyWorker(threading.Thread):
                 except socket.error as msg:
                     # print msg
                     pass
+                # print("ending")
         finally:
             udp_sock.close()
             
@@ -120,7 +126,8 @@ if __name__ == '__main__':
         s.close_lobby()
         print s.players.keys()
     finally:
-        s.close_lobby
+        print("closing")
+        s.close_lobby()
     
 
     s.shutdown()
