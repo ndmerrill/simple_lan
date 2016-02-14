@@ -4,7 +4,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import server
 import client
 
-PORT = 44242
+PORT = 40393
 
 def get_input(pipe):
     while True:
@@ -65,7 +65,7 @@ if server_or_client == "j":
 
 else:
     name = raw_input("Enter the name of your server: ")[:16]
-    serv = server.Server(name, 44242)
+    serv = server.Server(name, 40393)
     serv.open_lobby(16)
 
     while True:

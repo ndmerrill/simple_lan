@@ -84,7 +84,7 @@ class Client():
         print("i")
         time.sleep(wait_time)
 
-        out = []
+        out = {}
 
         try:
             while True:
@@ -94,7 +94,7 @@ class Client():
                 ip = ipHelper.unpack_ip(data[0:4])
                 port = struct.unpack("I", data[4:8])[0]
                 name = data[8:].strip()
-                out.append((ip, port, name))
+                out[name] = ip
                 print ip, name, port
 
         except socket.error as msg:
