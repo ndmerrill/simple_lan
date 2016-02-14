@@ -33,6 +33,7 @@ class Server():
         self.player_queue = Queue.Queue()
         self.game_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.game_sock.setblocking(0)
+        self.game_sock.bind(("", port))
 
 
     def open_lobby(self, callback=None):
@@ -68,7 +69,8 @@ class LobbyWorker(threading.Thread):
 
     def run(self):
         udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        udp_sock.bind((ipHelper.get_ip(), self.port))
+        # udp_sock.bind((ipHelper.get_ip(), self.port))
+        udp_sock.bind(("", self.port))
         # udp_sock.setblocking(0)
 
         package = ipHelper.pack_ip() + struct.pack("I", self.port) + self.name.rjust(16)
@@ -91,6 +93,7 @@ class LobbyWorker(threading.Thread):
                 
                 try:
                     conn, addr = self.game_sock.accept()
+                    conn.sendall("\x00")
                     name = self.game_sock.recv(16).strip()
                     print addr
                     self.q.put((addr, name, conn))
@@ -112,7 +115,7 @@ if __name__ == '__main__':
         for i in xrange(10):
             print s.players.keys()
             s.pull_lobby()
-            time.sleep(2)
+            time.sleep(1)
         s.close_lobby()
         print s.players.keys()
     finally:

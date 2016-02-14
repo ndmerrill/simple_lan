@@ -70,7 +70,7 @@ class Client():
     def _subnet_poller(self, target, data):
         """target is the /24 subnet targeted by this thread and data is the
             data to be sent"""
-        print "sends?"
+        # print "sends?"
         for i in xrange(256):
             # print("hi" + str(i))
 
@@ -83,8 +83,8 @@ class Client():
                 # doesn't matter if a couple of ip addresses don't work
             # print("done" + str(i))
 
-            print(time.clock()-btime)
-        print("done")
+            # print(time.clock()-btime)
+        # print("done")
 
     def join_server(self, ip):
         self.connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
