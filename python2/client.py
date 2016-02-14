@@ -39,6 +39,7 @@ class Client():
         for t in threads:
             t.join()
 
+        self.server_discovery_port.close()
         print("i")
         time.sleep(wait_time)
 
@@ -62,6 +63,7 @@ class Client():
         finally:
             try:
                 conn.close()
+                return_sock.close()
             except :
                 pass
 
@@ -74,7 +76,7 @@ class Client():
         for i in xrange(256):
             # print("hi" + str(i))
 
-            btime = time.clock()
+            # btime = time.clock()
             try:
                 self.server_discovery_port.sendto(data, (target+str(i), self.port))
             except socket.error as msg:
