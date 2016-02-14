@@ -16,18 +16,28 @@ def process_poll(target):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
         subnet_prefix = ip.split(".")[0] + "." + ip.split(".")[1] + "."
-        target = subnet_prefix + str(target) + "."
+        target_b = subnet_prefix + str(target) + "."
         for i in xrange(256):
             # print("hi" + str(i))
 
             # btime = time.clock()
             try:
-                sock.sendto(data, (str(target)+str(i), PORT))
+                sock.sendto(data, (str(target_b)+str(i), PORT))
             except socket.error as msg:
                 pass
                 # catches permission denied errors and ignores them because it
                 # doesn't matter if a couple of ip addresses don't work
             # print("done" + str(i))
+
+        target_b = subnet_prefix + str(target+1) + "."
+        for i in xrange(256):
+            # print("hi" + str(i))
+
+            # btime = time.clock()
+            try:
+                sock.sendto(data, (str(target_b)+str(i), PORT))
+            except socket.error as msg:
+                pass
 
             # print(time.clock()-btime)
         # print("done")
@@ -63,14 +73,14 @@ class Client():
         #     threads.append(t)
         #     t.start()
 
-        pool = multiprocessing.Pool(processes=256)
-        result = pool.map_async(process_poll, xrange(256))
+        pool = multiprocessing.Pool(processes=128)
+        result = pool.map_async(process_poll, xrange(0, 256, 2))
 
         print("i")
         # for t in threads:
         #     t.join()
 
-        result.get(timeout=10)
+        result.get(timeout=20)
 
         self.server_discovery_port.close()
         print("i")
