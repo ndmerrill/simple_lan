@@ -1,13 +1,21 @@
 import os, sys
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue, Pool
 sys.path.append(os.path.join(os.path.dirname(__file__), "../"))
 import server
 import client
 
 PORT = 44242
 
-def get_input():
-    return raw_input("> ").strip()
+def get_input(pipe):
+    while True:
+        if parent.poll():
+            message = parent.recv()
+            cli.send_raw(message)
+            print("sent message '" + message + "'")
+        data = cli.get_data_raw()
+        if data != None:
+            print(data)
+
 
 print("A simple LAN chat program.")
 
@@ -46,42 +54,21 @@ if server_or_client == "j":
         data = cli.get_data_raw()
 
     print("Chat started")
+    parent, child = Pipe()
+    p = Process(target=get_input, args=(child,))
+    p.start()
 
     while True:
-        msg = raw_input("> ").strip()
-        data = cli.get_data_raw()
-        if data != None:
-            print(data)
-        if msg != "":
-            cli.send_raw(msg)
+        a = raw_input("> ").strip()
+        parent.send(a)
+    p.join()
 
 else:
     name = raw_input("Enter the name of your server: ")[:16]
     serv = server.Server(name, 44242)
-    cli = client.Client("host", 44242)
-    serv.open_lobby(10)
-    """try:
-        while True:
-            #print "\rPlayers joined:", serv.count_lobby(),
-            pass
-    except KeyboardInterrupt:
-        pass"""
-    a = raw_input("Say when to stop")
-    cli.join_server(serv.ip)
-    serv.count_lobby()
-    serv.close_lobby()
-
-    serv.send_to_all_raw("st")
-
-    data = cli.get_data_raw()
+    serv.open_lobby(16)
 
     while True:
-        msg = raw_input("> ").strip()
-        data = cli.get_data_raw()
-        if data != None:
-            print(data)
-        if msg != "":
-            cli.send_raw(msg)
         data = serv.receive_from_all_raw()
         for a in data.keys():
             if data[a] != None:
