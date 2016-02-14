@@ -30,7 +30,7 @@ class Server():
         self.port = port
         self.ip = ipHelper.get_ip()
         self.name = name
-        self.players = {} # ip address -> (name, conn)
+        self.players = {} # name -> (ip, conn)
         self.player_queue = Queue.Queue()
         self.game_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.game_sock.setblocking(0)
@@ -47,8 +47,8 @@ class Server():
         while not self.player_queue.empty():
             player = self.player_queue.get()
             print(player)
-            ip = player.pop(0)
-            self.players[ip] = player
+            name = player.pop(1)
+            self.players[name] = player
 
     def close_lobby(self):
         print("to close")
@@ -56,6 +56,35 @@ class Server():
         print("pulled")
         self.lobby.join(timeout=5)
         print("done")
+
+    def receive_from_all_raw():
+        out = {}
+        for name in self.players.keys():
+            data = receive_from_raw(name)
+            if data:
+                out[name] = data
+        return out
+
+    def receive_from_raw(name):
+        conn = players[name][1]
+        data = conn.recv(2)
+        if data:
+            l = struct.unpack("!H", data)
+            content = conn.recv(l)
+            return content
+        return None
+
+    def send_to_raw(name, data):
+        data = str(data)
+        conn = players[name][1]
+        l = struct.pack("!H", len(data))
+        conn.sendall(l)
+        conn.sendall(data)
+
+    def send_to_all_raw(data):
+        for name in self.players.keys():
+            send_to_raw(name, data)
+
 
     def shutdown(self):
         self.game_sock.close()
@@ -100,16 +129,16 @@ class LobbyWorker(threading.Thread):
                 while True:
                     try:
                         conn, addr = self.game_sock.accept()
-                        print conn, addr
+                        # print conn, addr
                         conn.sendall("\x00")
                         break;
                     except socket.error as msg:
                         pass
-                print("hello")
+                # print("hello")
                 while True:
                     try:
                         name = conn.recv(16).strip()
-                        print("here")
+                        # print("here")
                         break;
                     except socket.error as msg:
                         print(msg)
